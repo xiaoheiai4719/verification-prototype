@@ -1,0 +1,156 @@
+{
+  "schema": 2,
+  "mode": "offline evidence workflow; no live model",
+  "created_at": "2026-11-19T01:58:03Z",
+  "snapshot": {
+    "id": "d81962712c350c6e5afcb60fb5c2d3c31d433483e5ba9f7089303da1d667860c",
+    "files": {
+      "plan.md": {
+        "sha256": "542070a74a5b3fdc9d0f2dca73ae11656ba9536160f79ce1f5dec7058d042c91",
+        "text": "# 虚构图片上传服务技术方案\n- R1: 远端成功但响应超时后，重试不能产生重复对象。\n- R2: 普通成功请求必须返回已保存对象的 ID。\n- R3: 真实存储供应商必须保证幂等键至少保留 24 小时。\n\n本方案暂不处理并发请求、持久化恢复、认证与权限。所有数据均为虚构。\n"
+      },
+      "service.py": {
+        "sha256": "e158d520ce7bb00ea70ccd9365c9ce6e686b2698fa089f2af0bce444d820072c",
+        "text": "class LostResponse(Exception):\n    pass\n\nclass FakeStorage:\n    \"\"\"Test double: first save succeeds remotely, then its response is lost.\"\"\"\n    def __init__(self, lose_first=False):\n        self.objects = []\n        self.keys = {}\n        self.lose_first = lose_first\n\n    def put(self, payload, key=None):\n        if key is not None and key in self.keys:\n            return self.keys[key]\n        identifier = len(self.objects) + 1\n        self.objects.append(payload)\n        if key is not None:\n            self.keys[key] = identifier\n        if self.lose_first:\n            self.lose_first = False\n            raise LostResponse('saved remotely; response lost')\n        return identifier\n\ndef upload(storage, payload, request_id):\n    for attempt in range(2):\n        try:\n            return storage.put(payload)  # BUG: retry has no stable identity\n        except LostResponse:\n            if attempt == 1:\n                raise\n\ndef upload_fixed(storage, payload, request_id):\n    for attempt in range(2):\n        try:\n            return storage.put(payload, key=request_id)\n        except LostResponse:\n            if attempt == 1:\n                raise\n"
+      }
+    },
+    "skipped": [
+      {
+        "path": "__pycache__/",
+        "reason": "excluded_directory"
+      }
+    ],
+    "budget": {
+      "max_files": 500,
+      "max_bytes": 2000000,
+      "bytes_read": 1509
+    },
+    "plan_sha256": "542070a74a5b3fdc9d0f2dca73ae11656ba9536160f79ce1f5dec7058d042c91",
+    "plan": "# 虚构图片上传服务技术方案\n- R1: 远端成功但响应超时后，重试不能产生重复对象。\n- R2: 普通成功请求必须返回已保存对象的 ID。\n- R3: 真实存储供应商必须保证幂等键至少保留 24 小时。\n\n本方案暂不处理并发请求、持久化恢复、认证与权限。所有数据均为虚构。\n",
+    "scope": "Bounded UTF-8 scan; exclusions enumerated. Heuristic secret screening is incomplete."
+  },
+  "requirements": [
+    {
+      "id": "R1",
+      "text": "远端成功但响应超时后，重试不能产生重复对象。",
+      "status": "unverified"
+    },
+    {
+      "id": "R2",
+      "text": "普通成功请求必须返回已保存对象的 ID。",
+      "status": "unverified"
+    },
+    {
+      "id": "R3",
+      "text": "真实存储供应商必须保证幂等键至少保留 24 小时。",
+      "status": "unverified"
+    }
+  ],
+  "claims": [],
+  "runs": [],
+  "limitations": [
+    "No model was called. Requirements use explicit Rn markers; free prose needs human/Agent review.",
+    "Source references prove location, not the truth or completeness of the claim.",
+    "No arbitrary repository tests are executed. Demo tests use only bundled fictional code.",
+    "Hashes provide change detection, not authenticity or tamper-proof storage."
+  ],
+  "decision_cards": [
+    {
+      "id": "retry-response-lost",
+      "requirement_id": "R1",
+      "problem": "上传接口偶尔收不到响应。调用方想自动重试，同时又不能多保存一份文件。如果从零设计，你会怎么做？",
+      "hints": [
+        "对调用方而言，两种情况都可能表现成超时：远端还没处理，或已经处理但响应没回来。你的方案能区分它们吗？",
+        "假设网络超时后，调用方看不到远端的对象列表。要识别两次调用其实是同一次业务操作，哪个信号得跨尝试保持不变？"
+      ],
+      "constraints": [
+        "远端第一次保存已成功，但响应丢失；客户端看到的是超时。",
+        "重试复用同一个业务操作标识；能否安全重试，还取决于接收端是否按这个标识识别重复操作。"
+      ],
+      "reveal": {
+        "explanation": "原实现每次都裸调用 put(payload)，远端无法分辨第二次是重试还是新上传。对照实现每次都传同一个 request_id；演示存储记录 key 和对象 ID，收到相同 key 时返回旧 ID，不再新增对象。关闭自动重试能避免由此产生的第二次写入，但超时后仍需查明是否成功。用稳定 ID 重试体验更好，但依赖接收端的去重契约与实现。",
+        "references": [
+          {
+            "file": "service.py",
+            "start": 11,
+            "end": 21
+          },
+          {
+            "file": "service.py",
+            "start": 23,
+            "end": 37
+          }
+        ],
+        "tradeoffs": [
+          "不自动重试：避免这次重复提交，但调用方仍需查明首次操作是否生效。",
+          "使用稳定操作 ID 重试：保留自动恢复体验，但接收端必须识别重复请求。"
+        ],
+        "unknowns": [
+          "仍未验证：真实供应商是否保证幂等键至少保留 24 小时（R3）；并发和重启恢复也不在本次覆盖范围。"
+        ],
+        "acceptance_checks": [
+          "让第一次保存成功后丢掉响应；用同一个操作 ID 重试；确认只产生一个对象，且返回该对象的 ID。"
+        ]
+      },
+      "input_snapshot": "d81962712c350c6e5afcb60fb5c2d3c31d433483e5ba9f7089303da1d667860c",
+      "origin": "human/Agent-authored rehearsal; no model called; source location is not semantic proof",
+      "card_sha256": "e964bd5f99a05f0c2e2427a46e73b2850c14f2e9b68e0c261bae144513e02e95"
+    }
+  ],
+  "reviews": [],
+  "workflow": {
+    "R1": {
+      "state": "needs_evidence",
+      "reason": "No supported source/check yet"
+    },
+    "R2": {
+      "state": "needs_evidence",
+      "reason": "No supported source/check yet"
+    },
+    "R3": {
+      "state": "needs_evidence",
+      "reason": "No supported source/check yet"
+    }
+  },
+  "tasks": {
+    "inventory": {
+      "state": "completed",
+      "blocked_by": []
+    },
+    "requirements": {
+      "state": "completed",
+      "blocked_by": []
+    },
+    "source_review": {
+      "state": "ready",
+      "blocked_by": []
+    },
+    "check_attempts": {
+      "state": "blocked",
+      "blocked_by": [
+        "source_review"
+      ]
+    },
+    "review_import": {
+      "state": "blocked",
+      "blocked_by": [
+        "check_attempts"
+      ]
+    },
+    "human_acceptance": {
+      "state": "blocked",
+      "blocked_by": [
+        "review_import"
+      ]
+    }
+  },
+  "learning": {
+    "card_count": 1,
+    "mode": "offline authored rehearsal; no automatic grading",
+    "acceptance_effect": "none; answering or revealing never accepts requirements"
+  },
+  "gate": {
+    "state": "not_accepted",
+    "reason": "Human acceptance and real dependency validation are outside this prototype."
+  }
+}
