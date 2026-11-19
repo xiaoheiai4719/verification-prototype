@@ -1,0 +1,1 @@
+[{"id": "r3-review", "input_snapshot": "d81962712c350c6e5afcb60fb5c2d3c31d433483e5ba9f7089303da1d667860c", "requirement_id": "R3", "severity": "major", "disposition": "escalate", "message": "Real provider contract not supplied", "evidence": "No provider documents available in fixture."}]

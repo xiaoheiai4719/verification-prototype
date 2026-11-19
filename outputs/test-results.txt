@@ -1,0 +1,51 @@
+test_changed_runner_marks_stale (test_verify.WorkflowTests.test_changed_runner_marks_stale) ... ok
+test_empty_observation_is_error_not_counterexample (test_verify.WorkflowTests.test_empty_observation_is_error_not_counterexample) ... ok
+test_fake_status_rejected (test_verify.WorkflowTests.test_fake_status_rejected) ... ok
+test_fixed_probe_pass (test_verify.WorkflowTests.test_fixed_probe_pass) ... ok
+test_full_demo_artifact (test_verify.WorkflowTests.test_full_demo_artifact) ... ok
+test_html_escaping (test_verify.WorkflowTests.test_html_escaping) ... ok
+test_invalid_line_rejected (test_verify.WorkflowTests.test_invalid_line_rejected) ... ok
+test_missing_file_rejected (test_verify.WorkflowTests.test_missing_file_rejected) ... ok
+test_missing_runner_provenance_marks_stale (test_verify.WorkflowTests.test_missing_runner_provenance_marks_stale) ... ok
+test_no_arbitrary_execution (test_verify.WorkflowTests.test_no_arbitrary_execution) ... ok
+test_non_object_json_is_error (test_verify.WorkflowTests.test_non_object_json_is_error) ... ok
+test_nonzero_probe_is_not_pass (test_verify.WorkflowTests.test_nonzero_probe_is_not_pass) ... ok
+test_path_escape_rejected (test_verify.WorkflowTests.test_path_escape_rejected) ... ok
+test_plan_change_marks_stale (test_verify.WorkflowTests.test_plan_change_marks_stale) ... ok
+test_probe_timeout (test_verify.WorkflowTests.test_probe_timeout) ... ok
+test_requirements_not_verified (test_verify.WorkflowTests.test_requirements_not_verified) ... ok
+test_runner_error (test_verify.WorkflowTests.test_runner_error) ... ok
+test_runner_file_changes_invalidate_results (test_verify.WorkflowTests.test_runner_file_changes_invalidate_results) ... ok
+test_source_change_marks_stale (test_verify.WorkflowTests.test_source_change_marks_stale) ... ok
+test_source_quote_is_actual (test_verify.WorkflowTests.test_source_quote_is_actual) ... ok
+test_symlink_not_read (test_verify.WorkflowTests.test_symlink_not_read) ... ok
+test_timeout_keeps_provenance_and_blocks_requirement (test_verify.WorkflowTests.test_timeout_keeps_provenance_and_blocks_requirement) ... ok
+test_unknown_requirement_rejected (test_verify.WorkflowTests.test_unknown_requirement_rejected) ... ok
+test_agent_packet_has_snapshot (test_workflow.WorkflowV2Tests.test_agent_packet_has_snapshot) ... ok
+test_binary_exclusion (test_workflow.WorkflowV2Tests.test_binary_exclusion) ... ok
+test_blocker_not_declined (test_workflow.WorkflowV2Tests.test_blocker_not_declined) ... ok
+test_boolean_not_integer (test_workflow.WorkflowV2Tests.test_boolean_not_integer) ... ok
+test_contest_requires_evidence (test_workflow.WorkflowV2Tests.test_contest_requires_evidence) ... ok
+test_demo_comparison (test_workflow.WorkflowV2Tests.test_demo_comparison) ... ok
+test_duplicate_requirements_rejected (test_workflow.WorkflowV2Tests.test_duplicate_requirements_rejected) ... ok
+test_empty_assertions_not_run (test_workflow.WorkflowV2Tests.test_empty_assertions_not_run) ... ok
+test_failed_check_contradicts (test_workflow.WorkflowV2Tests.test_failed_check_contradicts) ... ok
+test_graph_cycle (test_workflow.WorkflowV2Tests.test_graph_cycle) ... ok
+test_graph_ready_blocked (test_workflow.WorkflowV2Tests.test_graph_ready_blocked) ... ok
+test_graph_unknown_dep (test_workflow.WorkflowV2Tests.test_graph_unknown_dep) ... ok
+test_missing_field_error (test_workflow.WorkflowV2Tests.test_missing_field_error) ... ok
+test_missing_requirements_rejected (test_workflow.WorkflowV2Tests.test_missing_requirements_rejected) ... ok
+test_pass_not_full_acceptance (test_workflow.WorkflowV2Tests.test_pass_not_full_acceptance) ... ok
+test_plan_secret_rejected (test_workflow.WorkflowV2Tests.test_plan_secret_rejected) ... ok
+test_proposed_fix_remains_blocked (test_workflow.WorkflowV2Tests.test_proposed_fix_remains_blocked) ... ok
+test_review_wrong_version (test_workflow.WorkflowV2Tests.test_review_wrong_version) ... ok
+test_scan_budget (test_workflow.WorkflowV2Tests.test_scan_budget) ... ok
+test_scan_size_budget (test_workflow.WorkflowV2Tests.test_scan_size_budget) ... ok
+test_secret_exclusion (test_workflow.WorkflowV2Tests.test_secret_exclusion) ... ok
+test_timeout_blocks (test_workflow.WorkflowV2Tests.test_timeout_blocks) ... ok
+test_unknown_operator_reject (test_workflow.WorkflowV2Tests.test_unknown_operator_reject) ... ok
+
+----------------------------------------------------------------------
+Ran 46 tests in 0.486s
+
+OK
