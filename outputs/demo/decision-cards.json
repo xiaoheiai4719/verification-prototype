@@ -1,0 +1,13 @@
+[
+  {
+    "id": "retry-response-lost",
+    "requirement_id": "R1",
+    "problem": "上传接口偶尔收不到响应。调用方想自动重试，同时又不能多保存一份文件。如果从零设计，你会怎么做？",
+    "phase": "question",
+    "first_answer": null,
+    "hints": [],
+    "constraints": [],
+    "hint_count": 0,
+    "total_hints": 2
+  }
+]
