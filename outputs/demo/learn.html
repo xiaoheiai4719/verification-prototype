@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>设计推演 · 方案与代码核验助手</title>
+<style>
+:root{color-scheme:light;--ink:#172526;--muted:#4c6161;--edge:#d0dedb;--accent:#0a6354}
+*{box-sizing:border-box}body{margin:0;background:#eff5f1;color:var(--ink);font:16px/1.75 system-ui,sans-serif}
+main{width:min(100% - 32px,760px);margin:40px auto 72px}header{margin-bottom:22px}h1,h2,h3,p{margin:0 0 12px}
+h1{font-size:clamp(28px,5vw,42px);line-height:1.2}h2{font-size:22px}h3{font-size:17px}a{color:var(--accent)}
+.kicker{color:var(--accent);font-weight:700;letter-spacing:.09em;font-size:13px}
+.card{background:#fff;border:1px solid var(--edge);border-radius:16px;padding:clamp(15px,4vw,30px);margin-bottom:14px}
+.muted{color:var(--muted)}label{display:block;font-weight:650}textarea{width:100%;min-height:100px;border:1px solid #758987;border-radius:8px;padding:10px;margin:8px 0;font:inherit;color:inherit}
+.actions{display:flex;gap:8px;flex-wrap:wrap}button{font:inherit;font-weight:650;border-radius:8px;border:1px solid var(--accent);background:#fff;color:var(--accent);padding:8px 14px;cursor:pointer}
+button.primary{background:var(--accent);color:#fff}button:disabled{opacity:.53;cursor:default}summary{cursor:pointer}
+pre{background:#eff5f1;border-radius:8px;padding:12px;white-space:pre-wrap;overflow-wrap:anywhere}
+[hidden]{display:none!important}:focus-visible{outline:3px solid #a24d00;outline-offset:4px}
+</style></head>
+<body><main><header><p class="kicker">方案与代码核验助手 · 离线样例</p>
+<h1>先做设计，再看证据</h1><p class="muted">先提交自己的判断，再逐步揭示约束，最后用同一张卡对照源码和测试。</p></header>
+<section class="card"><h2>01 · 你会怎么设计？</h2><p id="problem"></p>
+<form id="answer-form"><label for="answer">你的设计</label><textarea id="answer" maxlength="4000" required placeholder="写下你的方案，或者写下你现在缺的事实。"></textarea><div class="actions"><button class="primary" type="submit" id="submit">提交思路</button></div></form>
+<p id="saved" class="muted" role="status"></p><p class="muted">这页不会给答案打分，也不会把输入发送到任何地方。刷新会清空。</p></section>
+<section class="card" id="second" hidden><h2>02 · 加一个约束，再想想</h2><ol id="steps" aria-live="polite"></ol><div class="actions"><button id="next">给我一个提示</button><button id="reveal" class="primary">直接看源码对照</button></div></section>
+<section class="card" id="third" hidden><h2 id="third-title" tabindex="-1">03 · 源码和执行结果</h2><div id="result"></div></section>
+<p class="muted"><a href="report.html">打开完整核验报告（含答案）</a></p></main>
+<script type="application/json" id="lesson-data">{"problem": "上传接口偶尔收不到响应。调用方想自动重试，同时又不能多保存一份文件。如果从零设计，你会怎么做？", "steps": ["对调用方而言，两种情况都可能表现成超时：远端还没处理，或已经处理但响应没回来。你的方案能区分它们吗？ 远端第一次保存已成功，但响应丢失；客户端看到的是超时。", "假设网络超时后，调用方看不到远端的对象列表。要识别两次调用其实是同一次业务操作，哪个信号得跨尝试保持不变？ 重试复用同一个业务操作标识；能否安全重试，还取决于接收端是否按这个标识识别重复操作。"], "reveal": {"explanation": "原实现每次都裸调用 put(payload)，远端无法分辨第二次是重试还是新上传。对照实现每次都传同一个 request_id；演示存储记录 key 和对象 ID，收到相同 key 时返回旧 ID，不再新增对象。关闭自动重试能避免由此产生的第二次写入，但超时后仍需查明是否成功。用稳定 ID 重试体验更好，但依赖接收端的去重契约与实现。", "references": [{"file": "service.py", "start": 11, "end": 21, "quote": "    def put(self, payload, key=None):\n        if key is not None and key in self.keys:\n            return self.keys[key]\n        identifier = len(self.objects) + 1\n        self.objects.append(payload)\n        if key is not None:\n            self.keys[key] = identifier\n        if self.lose_first:\n            self.lose_first = False\n            raise LostResponse('saved remotely; response lost')\n        return identifier", "sha256": "e158d520ce7bb00ea70ccd9365c9ce6e686b2698fa089f2af0bce444d820072c"}, {"file": "service.py", "start": 23, "end": 37, "quote": "def upload(storage, payload, request_id):\n    for attempt in range(2):\n        try:\n            return storage.put(payload)  # BUG: retry has no stable identity\n        except LostResponse:\n            if attempt == 1:\n                raise\n\ndef upload_fixed(storage, payload, request_id):\n    for attempt in range(2):\n        try:\n            return storage.put(payload, key=request_id)\n        except LostResponse:\n            if attempt == 1:\n                raise", "sha256": "e158d520ce7bb00ea70ccd9365c9ce6e686b2698fa089f2af0bce444d820072c"}], "tradeoffs": ["不自动重试：避免这次重复提交，但调用方仍需查明首次操作是否生效。", "使用稳定操作 ID 重试：保留自动恢复体验，但接收端必须识别重复请求。"], "unknowns": ["仍未验证：真实供应商是否保证幂等键至少保留 24 小时（R3）；并发和重启恢复也不在本次覆盖范围。"], "acceptance_checks": ["让第一次保存成功后丢掉响应；用同一个操作 ID 重试；确认只产生一个对象，且返回该对象的 ID。"], "test_status": {"state": "contradicted", "runs": [{"variant": "baseline", "scenario": "lost_response", "requirement_ids": ["R1"], "runner_sha256": "91769afe875319ad7ccb49462a9f5a516fabeeb7394a94112d8d4281ebdb485f", "scope": "Bundled FakeStorage only; NOT a real provider validation", "status": "failed", "exit_code": 1, "assertions": [{"field": "object_count", "expected": 1, "actual": 2, "op": "equals", "status": "failed"}, {"field": "returned_id", "expected": 1, "actual": 2, "op": "equals", "status": "failed"}], "stdout": "{\"scenario\": \"lost_response\", \"object_count\": 2, \"returned_id\": 2, \"expected_count\": 1, \"passed\": false}\n", "stderr": "", "seconds": 0.0226, "input_snapshot": "d81962712c350c6e5afcb60fb5c2d3c31d433483e5ba9f7089303da1d667860c"}, {"variant": "fixed", "scenario": "lost_response", "requirement_ids": ["R1"], "runner_sha256": "91769afe875319ad7ccb49462a9f5a516fabeeb7394a94112d8d4281ebdb485f", "scope": "Bundled FakeStorage only; NOT a real provider validation", "status": "passed", "exit_code": 0, "assertions": [{"field": "object_count", "expected": 1, "actual": 1, "op": "equals", "status": "passed"}, {"field": "returned_id", "expected": 1, "actual": 1, "op": "equals", "status": "passed"}], "stdout": "{\"scenario\": \"lost_response\", \"object_count\": 1, \"returned_id\": 1, \"expected_count\": 1, \"passed\": true}\n", "stderr": "", "seconds": 0.0247, "input_snapshot": "d81962712c350c6e5afcb60fb5c2d3c31d433483e5ba9f7089303da1d667860c"}], "by_variant": {"baseline": {"state": "contradicted", "reason": "A recorded check failed"}, "fixed": {"state": "checks_passed", "reason": "Only the recorded checks passed; not full acceptance"}}, "scope": "Recorded checks only, not full acceptance; use CLI for live input/runner freshness check"}, "business_acceptance": "not_accepted", "answer_assessment": "not_graded; compare your reasoning with evidence, not a model score", "authorship": "human/Agent-authored rehearsal; no model called; source location is not semantic proof"}}</script>
+<script>
+'use strict';
+const el = id => document.getElementById(id);
+const lesson = JSON.parse(el('lesson-data').textContent);
+const add = (parent, tag, label) => {
+  const node=document.createElement(tag);
+  node.textContent=label;
+  parent.append(node);
+  return node;
+};
+el('problem').textContent=lesson.problem;
+let step=0;
+let firstAnswer=null;
+el('answer-form').addEventListener('submit', event => {
+  event.preventDefault();
+  if (!el('answer').value.trim()) { el('saved').textContent='请先写下一句思路，或说明还缺什么信息。'; return; }
+  if (firstAnswer===null) firstAnswer=el('answer').value.trim();
+  el('saved').textContent=el('second').hidden ? '思路已记录，可以看提示了。' : '已记录修订后的思路，初始回答仍保留。';
+  el('submit').textContent='更新思路';
+  el('second').hidden=false;
+});
+el('next').addEventListener('click', () => {
+  if (step>=lesson.steps.length) return;
+  add(el('steps'),'li',lesson.steps[step++]);
+  if (step>=lesson.steps.length) { el('next').disabled=true; el('next').textContent='提示已看完'; }
+  else el('next').textContent='再给一个提示';
+});
+el('reveal').addEventListener('click', () => {
+  const reveal=lesson.reveal, root=el('result');
+  add(root,'h3','你的首次判断');add(root,'p',firstAnswer);
+  add(root,'h3','仓库是怎么做的');add(root,'p',reveal.explanation);
+  for (const ref of reveal.references) {
+    const details=document.createElement('details');root.append(details);
+    add(details,'summary',ref.file+':'+ref.start+'–'+ref.end+' · 看源码');
+    add(details,'pre',ref.quote);
+  }
+  add(root,'h3','设计取舍'); for (const item of reveal.tradeoffs) add(root,'p',item);
+  add(root,'h3','验收条件'); for (const item of reveal.acceptance_checks) add(root,'p',item);
+  add(root,'h3','执行记录（只对虚构样例有效）');
+  const list=document.createElement('ul');root.append(list);
+  for (const row of reveal.test_status.runs) {
+    const variant={baseline:'原版',fixed:'对照修正版'}[row.variant] || row.variant;
+    const status={passed:'通过',failed:'失败',not_run:'未运行',error:'执行错误',timeout:'超时'}[row.status] || row.status;
+    const count=row.assertions.find(item=>item.field==='object_count');
+    const detail=count && typeof count.actual==='number' ? '，实际保存 '+count.actual+' 个对象' : '';
+    add(list,'li',variant+'：'+status+detail);
+  }
+  for (const item of reveal.unknowns) add(root,'p',item).className='muted';
+  el('third').hidden=false;
+  el('reveal').disabled=true;
+  el('third-title').focus();
+});
+</script></body></html>
